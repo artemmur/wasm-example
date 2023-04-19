@@ -1,18 +1,9 @@
-FROM golang:1.20-alpine AS build
-
+FROM --platform=$BUILDPLATFORM tinygo/tinygo AS build
 WORKDIR /app
-COPY ./cmd /app/cmd
+COPY . .
+RUN tinygo build -o hello.wasm -target wasi ./cmd/hello/main.go
 
-# This line installs WasmEdge including the AOT compiler
-RUN curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash
-
-RUN GOOS=js GOARCH=wasm go build \
--o main.wasm \
-./cmd/hello
-
-# This line builds the AOT Wasm binary
-RUN /root/.wasmedge/bin/wasmedgec /app/main.wasm build.wasm
-
+# syntax=docker/dockerfile:1
 FROM scratch
 ENTRYPOINT [ "hello.wasm" ]
-COPY --from=build /app/build.wasm /hello.wasm
+COPY --from=build --link /app/hello.wasm /hello.wasm
